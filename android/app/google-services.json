@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "413172237624",
+    "project_id": "edarshop-d20aa",
+    "storage_bucket": "edarshop-d20aa.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:413172237624:android:3db1529054dd1d213f6dcd",
+        "android_client_info": {
+          "package_name": "com.example.edar_shop"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBwfshXARVpcl1772J2O6NnU0rpIFYIhvY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
