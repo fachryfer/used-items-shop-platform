@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/item.dart';
 import 'package:intl/intl.dart';
+import 'package:edar_shop/models/order.dart' as models;
+import 'package:edar_shop/screens/checkout_screen.dart';
 
 class ItemDetailScreen extends StatefulWidget {
   final Item item;
@@ -85,11 +87,28 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: widget.item.stock > 0
-                    ? () {
-                        // TODO: Implement purchase logic
-                        print('Beli ${widget.item.name}');
+                    ? () async {
+                        final user = FirebaseAuth.instance.currentUser;
+                        if (user == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Anda harus login untuk melakukan pembelian.'), backgroundColor: Colors.red)
+                          );
+                          return;
+                        }
+
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => CheckoutScreen(item: widget.item),
+                          ),
+                        );
+
+                        if (result == true) {
+                          // Refresh UI jika pembelian berhasil
+                          setState(() {});
+                        }
                       }
-                    : null, // Disable button if stock is 0
+                    : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: widget.item.stock > 0 ? Colors.blue : Colors.grey,
                   padding: const EdgeInsets.symmetric(vertical: 15),

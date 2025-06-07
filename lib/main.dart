@@ -40,7 +40,7 @@ class MyApp extends StatelessWidget {
               builder: (context, userSnapshot) {
                 if (userSnapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
-                }
+  }
                 if (userSnapshot.hasData && userSnapshot.data!.exists) {
                   final role = userSnapshot.data!['role'];
                   if (role == 'admin') {
