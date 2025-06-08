@@ -160,94 +160,152 @@ class _AddItemScreenState extends State<AddItemScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : Padding(
+          : SingleChildScrollView(
               padding: const EdgeInsets.all(16.0),
-              child: Form(
-                key: _formKey,
-                child: ListView(
-                  children: <Widget>[
-                    TextFormField(
-                      controller: _nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Nama Barang',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Mohon masukkan nama barang';
-                        }
-                        return null;
-                      },
+              child: Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      children: <Widget>[
+                        // Image Picker
+                        GestureDetector(
+                          onTap: _pickImage,
+                          child: Container(
+                            height: 150,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.grey, width: 1.5), // Hapus style: BorderStyle.dashed
+                            ),
+                            child: _selectedImage != null
+                                ? ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: Image.file(
+                                      _selectedImage!,
+                                      fit: BoxFit.cover,
+                                      width: double.infinity,
+                                    ),
+                                  )
+                                : Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.camera_alt, size: 50, color: Colors.grey[700]),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'Pilih Gambar Barang',
+                                        style: TextStyle(color: Colors.grey[700]),
+                                      ),
+                                    ],
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(height: 24.0), // Jarak setelah image picker
+                        TextFormField(
+                          controller: _nameController,
+                          decoration: InputDecoration(
+                            labelText: 'Nama Barang',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                            prefixIcon: const Icon(Icons.shopping_bag), // Ikon untuk nama barang
+                            contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Mohon masukkan nama barang';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16.0),
+                        TextFormField(
+                          controller: _descriptionController,
+                          decoration: InputDecoration(
+                            labelText: 'Deskripsi Barang',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                            prefixIcon: const Icon(Icons.description), // Ikon untuk deskripsi
+                            contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+                          ),
+                          maxLines: 3,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Mohon masukkan deskripsi barang';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16.0),
+                        TextFormField(
+                          controller: _priceController,
+                          decoration: InputDecoration(
+                            labelText: 'Harga (Rp)',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                            prefixIcon: const Icon(Icons.attach_money), // Ikon untuk harga
+                            contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+                          ),
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Mohon masukkan harga barang';
+                            }
+                            if (double.tryParse(value) == null) {
+                              return 'Harga harus berupa angka';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16.0),
+                        TextFormField(
+                          controller: _stockController,
+                          decoration: InputDecoration(
+                            labelText: 'Stok',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                            prefixIcon: const Icon(Icons.inventory), // Ikon untuk stok
+                            contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+                          ),
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Mohon masukkan stok barang';
+                            }
+                            if (int.tryParse(value) == null) {
+                              return 'Stok harus berupa angka bulat';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 24.0), // Jarak sebelum tombol
+                        ElevatedButton(
+                          onPressed: _isLoading ? null : _addItem,
+                          style: ElevatedButton.styleFrom(
+                            minimumSize: const Size(double.infinity, 50),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            backgroundColor: Theme.of(context).colorScheme.primary, // Gunakan primary color dari tema
+                            foregroundColor: Colors.white, // Warna teks putih
+                          ),
+                          child: _isLoading
+                              ? const CircularProgressIndicator(color: Colors.white)
+                              : const Text(
+                                  'Tambah Barang',
+                                  style: TextStyle(fontSize: 18),
+                                ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 16.0),
-                    TextFormField(
-                      controller: _descriptionController,
-                      decoration: const InputDecoration(
-                        labelText: 'Deskripsi Barang',
-                        border: OutlineInputBorder(),
-                      ),
-                      maxLines: 3,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Mohon masukkan deskripsi barang';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16.0),
-                    TextFormField(
-                      controller: _priceController,
-                      decoration: const InputDecoration(
-                        labelText: 'Harga',
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType: TextInputType.number,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Mohon masukkan harga';
-                        }
-                        if (double.tryParse(value) == null || double.parse(value) <= 0) {
-                          return 'Mohon masukkan angka positif';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16.0),
-                    TextFormField(
-                      controller: _stockController,
-                      decoration: const InputDecoration(
-                        labelText: 'Jumlah Stok',
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType: TextInputType.number,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Mohon masukkan jumlah stok';
-                        }
-                        if (int.tryParse(value) == null || int.parse(value) <= 0) {
-                          return 'Mohon masukkan angka positif';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16.0),
-                    _selectedImage != null
-                        ? Image.file(_selectedImage!, height: 150, fit: BoxFit.cover)
-                        : const Text('Tidak ada gambar dipilih'),
-                    const SizedBox(height: 8.0),
-                    ElevatedButton.icon(
-                      onPressed: _pickImage,
-                      icon: const Icon(Icons.image),
-                      label: const Text('Pilih Gambar'),
-                    ),
-                    const SizedBox(height: 24.0),
-                    ElevatedButton(
-                      onPressed: _isLoading ? null : _addItem,
-                      child: _isLoading
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text('Tambah Barang'),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),

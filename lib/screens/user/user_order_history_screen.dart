@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:edar_shop/models/order.dart' as models;
 import 'package:intl/intl.dart';
+import 'package:edar_shop/models/cart_item.dart';
+import 'package:edar_shop/screens/user/order_details_screen.dart';
 
 class UserOrderHistoryScreen extends StatelessWidget {
   const UserOrderHistoryScreen({Key? key}) : super(key: key);
@@ -18,9 +20,6 @@ class UserOrderHistoryScreen extends StatelessWidget {
 
     return Column(
       children: [
-        const SizedBox(height: 16),
-        const Text('Riwayat Pesanan Anda', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        const SizedBox(height: 8),
         Expanded(
           child: StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
@@ -46,31 +45,122 @@ class UserOrderHistoryScreen extends StatelessWidget {
               }).toList();
 
               return ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.all(12),
                 itemCount: orders.length,
                 itemBuilder: (context, index) {
                   final order = orders[index];
                   return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 6),
-                    child: ListTile(
-                      leading: order.itemImageUrl != null
-                          ? Image.network(order.itemImageUrl!, width: 50, height: 50, fit: BoxFit.cover)
-                          : const Icon(Icons.image_not_supported, size: 50),
-                      title: Text('${order.itemName} (x${order.quantity})', style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Total: Rp ${oCcy.format(order.itemPrice * order.quantity)}'),
-                          Text('Status: ${order.status.toUpperCase()}'),
-                          Text('Penjual: ${order.sellerName}'),
-                          if (order.orderDate != null)
-                            Text('Tanggal: ${DateFormat('dd MMMM yyyy, HH:mm').format(order.orderDate!)}'),
-                        ],
-                      ),
+                    elevation: 4,
+                    margin: const EdgeInsets.symmetric(vertical: 8.0),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
                       onTap: () {
-                        // TODO: Navigate to order detail screen if needed
-                        print('View order detail for ${order.id}');
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => OrderDetailsScreen(order: order)));
                       },
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ...order.cartItems.map((cartItem) {
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 4.0),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: cartItem.imageUrl.isNotEmpty
+                                          ? Image.network(cartItem.imageUrl,
+                                              width: 60, height: 60, fit: BoxFit.cover)
+                                          : Container(
+                                              width: 60, height: 60, color: Theme.of(context).colorScheme.surface,
+                                              child: const Icon(Icons.image_not_supported, size: 30, color: Colors.grey),
+                                            ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            '${cartItem.name} (x${cartItem.quantity})',
+                                            style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'Rp ${oCcy.format(cartItem.price * cartItem.quantity)}',
+                                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.teal.shade300),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                            const Divider(height: 24, thickness: 1),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Total Pesanan:',
+                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                                ),
+                                Text(
+                                  'Rp ${oCcy.format(order.totalAmount)}',
+                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.teal.shade300, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Icon(Icons.person, size: 16, color: Theme.of(context).textTheme.bodySmall?.color),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Pembeli: ${order.buyerName}',
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            if (order.orderDate != null)
+                              Row(
+                                children: [
+                                  Icon(Icons.calendar_today, size: 16, color: Theme.of(context).textTheme.bodySmall?.color),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Tanggal: ${DateFormat('dd MMMM yyyy, HH:mm').format(order.orderDate!)}',
+                                    style: Theme.of(context).textTheme.bodySmall,
+                                  ),
+                                ],
+                              ),
+                            const SizedBox(height: 8),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: _getStatusColor(order.status),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  order.status.toUpperCase(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   );
                 },
@@ -80,5 +170,22 @@ class UserOrderHistoryScreen extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return Colors.orange.shade700;
+      case 'completed':
+        return Colors.green.shade700;
+      case 'cancelled':
+        return Colors.red.shade700;
+      case 'shipped':
+        return Colors.blue.shade700;
+      case 'delivered':
+        return Colors.purple.shade700;
+      default:
+        return Colors.grey.shade700;
+    }
   }
 } 

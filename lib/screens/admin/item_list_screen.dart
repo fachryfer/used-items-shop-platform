@@ -10,9 +10,6 @@ class ItemListScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const SizedBox(height: 16),
-        const Text('Daftar Barang', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        const SizedBox(height: 8),
         Expanded(
           child: StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
@@ -36,64 +33,119 @@ class ItemListScreen extends StatelessWidget {
                  return Item.fromFirestore(data, doc.id);
               }).toList();
 
-              return ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              return GridView.builder(
+                padding: const EdgeInsets.all(12),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 0.75, // Sesuaikan rasio aspek jika diperlukan
+                ),
                 itemCount: items.length,
                 itemBuilder: (context, index) {
                   final item = items[index];
                   return Card(
                     key: ValueKey(item.id),
-                    margin: const EdgeInsets.symmetric(vertical: 6),
-                    child: ListTile(
-                      leading: item.imageUrl != null
-                          ? Image.network(item.imageUrl!, width: 50, height: 50, fit: BoxFit.cover)
-                          : const Icon(Icons.image_not_supported, size: 50),
-                      title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Column(
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onTap: () {
+                        // Tidak ada navigasi ke detail item di admin, fokus pada edit/delete
+                      },
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Harga: Rp ${item.price.toStringAsFixed(0)}'),
-                          Text('Stok: ${item.stock}'),
-                          Text('Penjual: ${item.sellerName ?? 'N/A'}'),
-                        ],
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Edit Button
-                          IconButton(
-                            icon: const Icon(Icons.edit, color: Colors.blue),
-                            onPressed: () {
-                              // TODO: Implement edit navigation
-                              // print('Edit item ${item.id}'); // Placeholder
-                               Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => EditItemScreen(itemId: item.id),
+                          // Gambar Produk
+                          if (item.imageUrl != null)
+                            Expanded(
+                              child: Image.network(
+                                item.imageUrl!,
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                              ),
+                            )
+                          else
+                            Expanded(
+                              child: Container(
+                                color: Colors.grey[200],
+                                child: const Center(child: Icon(Icons.image_not_supported, size: 50, color: Colors.grey)),
+                              ),
+                            ),
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              );
-                            },
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Rp ${item.price.toStringAsFixed(0)}',
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.primary,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Stok: ${item.stock}',
+                                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                ),
+                              ],
+                            ),
                           ),
-                          // Delete Button
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () async {
-                              // Implement delete functionality
-                              try {
-                                await FirebaseFirestore.instance.collection('items').doc(item.id).delete();
-                                if (context.mounted) {
-                                   ScaffoldMessenger.of(context).showSnackBar(
-                                     const SnackBar(content: Text('Barang berhasil dihapus'), backgroundColor: Colors.green)
-                                   );
-                                }
-                              } catch (e) {
-                                 if (context.mounted) {
-                                   ScaffoldMessenger.of(context).showSnackBar(
-                                     SnackBar(content: Text('Gagal menghapus barang: $e'), backgroundColor: Colors.red)
-                                   );
-                                 }
-                              }
-                            },
+                          // Tombol Edit dan Hapus
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: IconButton(
+                                    icon: const Icon(Icons.edit, color: Colors.blue),
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => EditItemScreen(itemId: item.id),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                                Expanded(
+                                  child: IconButton(
+                                    icon: const Icon(Icons.delete, color: Colors.red),
+                                    onPressed: () async {
+                                      // Implement delete functionality
+                                      try {
+                                        await FirebaseFirestore.instance.collection('items').doc(item.id).delete();
+                                        if (context.mounted) {
+                                           ScaffoldMessenger.of(context).showSnackBar(
+                                             const SnackBar(content: Text('Barang berhasil dihapus'), backgroundColor: Colors.green)
+                                           );
+                                        }
+                                      } catch (e) {
+                                         if (context.mounted) {
+                                           ScaffoldMessenger.of(context).showSnackBar(
+                                             SnackBar(content: Text('Gagal menghapus barang: $e'), backgroundColor: Colors.red)
+                                           );
+                                         }
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),

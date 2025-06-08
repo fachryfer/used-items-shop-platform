@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'add_item_screen.dart'; // Import AddItemScreen
 import 'item_list_screen.dart'; // Will create this later
 import 'admin_order_management_screen.dart'; // Import AdminOrderManagementScreen
+import 'admin_profile_screen.dart'; // Import AdminProfileScreen
 
 class AdminHomeScreen extends StatefulWidget {
   const AdminHomeScreen({Key? key}) : super(key: key);
@@ -16,28 +17,9 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   int _selectedIndex = 0;
 
   static final List<Widget> _widgetOptions = <Widget>[
-    const ItemListScreen(), // Placeholder for item list
-    const AdminOrderManagementScreen(), // Replace placeholder with actual screen
-    const Text('Statistik/Laporan'), // Placeholder for statistics
-    // Profil Admin
-    Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text('Selamat datang, Admin!'),
-          SizedBox(height: 20),
-          Builder(
-            builder: (context) => ElevatedButton(
-              onPressed: () async {
-                await FirebaseAuth.instance.signOut();
-                Navigator.of(context).pushReplacementNamed('/login');
-              },
-              child: const Text('Logout'),
-            ),
-          ),
-        ],
-      ),
-    ),
+    const ItemListScreen(), // Daftar Barang
+    const AdminOrderManagementScreen(), // Manajemen Pesanan
+    const AdminProfileScreen(), // Profil Admin
   ];
 
   void _onItemTapped(int index) {
@@ -70,11 +52,10 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
         unselectedItemColor: Colors.grey,
-        selectedItemColor: Colors.blue,
+        selectedItemColor: Theme.of(context).colorScheme.primary, // Gunakan primary color dari tema
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.storage), label: 'Barang'),
           BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'Pesanan'),
-          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Statistik'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
         ],
       ),

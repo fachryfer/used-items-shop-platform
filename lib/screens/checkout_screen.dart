@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../models/item.dart';
 import '../models/shipping_address.dart';
 import '../models/user_address.dart';
 import '../models/order.dart' as models;
 import 'package:intl/intl.dart';
 import 'user/address_management_screen.dart';
+import '../models/cart_item.dart';
 
 class CheckoutScreen extends StatefulWidget {
-  final Item item;
+  final List<CartItem> cartItems;
 
-  const CheckoutScreen({Key? key, required this.item}) : super(key: key);
+  const CheckoutScreen({
+    Key? key,
+    required this.cartItems,
+  }) : super(key: key);
 
   @override
   State<CheckoutScreen> createState() => _CheckoutScreenState();
@@ -73,6 +76,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         setState(() {
           _selectedAddress = address;
           _useSavedAddress = true;
+          _fillAddressForm(_selectedAddress!);
         });
       }
     } catch (e) {
@@ -128,47 +132,57 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       }
 
       await FirebaseFirestore.instance.runTransaction((transaction) async {
-        // Dapatkan referensi item
-        final itemRef = FirebaseFirestore.instance.collection('items').doc(widget.item.id);
-        final itemSnapshot = await transaction.get(itemRef);
+        double totalAmount = 0.0;
+        final List<Map<String, dynamic>> itemsToUpdate = [];
 
-        if (!itemSnapshot.exists) {
-          throw Exception('Barang tidak ditemukan');
+        // Fase 1: Semua pembacaan dan validasi
+        for (var cartItem in widget.cartItems) {
+          final itemRef = FirebaseFirestore.instance.collection('items').doc(cartItem.itemId);
+          final itemSnapshot = await transaction.get(itemRef);
+
+          if (!itemSnapshot.exists) {
+            throw Exception('Barang ${cartItem.name} tidak ditemukan');
+          }
+
+          final currentStock = (itemSnapshot.data()?['stock'] ?? 0).toInt();
+          if (currentStock < cartItem.quantity) {
+            throw Exception('Stok barang ${cartItem.name} tidak mencukupi. Stok tersedia: $currentStock');
+          }
+
+          totalAmount += cartItem.price * cartItem.quantity;
+          itemsToUpdate.add({
+            'ref': itemRef,
+            'newStock': currentStock - cartItem.quantity,
+          });
         }
 
-        final currentStock = (itemSnapshot.data()?['stock'] ?? 0).toInt();
-        if (currentStock <= 0) {
-          throw Exception('Stok barang sudah habis');
+        // Fase 2: Semua penulisan
+        for (var itemData in itemsToUpdate) {
+          transaction.update(itemData['ref'], {
+            'stock': itemData['newStock'],
+            'updatedAt': FieldValue.serverTimestamp()
+          });
         }
-
-        // Kurangi stok
-        transaction.update(itemRef, {
-          'stock': currentStock - 1,
-          'updatedAt': FieldValue.serverTimestamp()
-        });
 
         // Buat pesanan baru
         final newOrder = models.Order(
           id: '',
-          itemId: widget.item.id,
-          itemName: widget.item.name,
-          itemPrice: widget.item.price,
-          quantity: 1,
+          cartItems: widget.cartItems,
+          totalAmount: totalAmount,
           buyerId: user.uid,
           buyerName: user.displayName ?? user.email ?? 'Pengguna',
-          sellerId: widget.item.sellerId ?? '',
-          sellerName: widget.item.sellerName ?? 'N/A',
-          itemImageUrl: widget.item.imageUrl,
+          sellerId: '',
+          sellerName: 'N/A',
           status: 'pending',
           orderDate: DateTime.now(),
+          shippingAddress: shippingAddress.toMap(),
+          paymentMethod: _selectedPaymentMethod,
         );
 
         // Tambahkan pesanan ke koleksi orders
         final orderRef = FirebaseFirestore.instance.collection('orders').doc();
         transaction.set(orderRef, {
           ...newOrder.toFirestore(),
-          'shippingAddress': shippingAddress.toMap(),
-          'paymentMethod': _selectedPaymentMethod,
         });
       });
 
@@ -238,54 +252,62 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                               style: Theme.of(context).textTheme.titleLarge,
                             ),
                             const SizedBox(height: 16),
-                            Row(
-                              children: [
-                                if (widget.item.imageUrl != null)
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: Image.network(
-                                      widget.item.imageUrl!,
-                                      width: 80,
-                                      height: 80,
-                                      fit: BoxFit.cover,
-                                    ),
-                                  ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                            ...widget.cartItems.map((cartItem) => Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                                  child: Row(
                                     children: [
-                                      Text(
-                                        widget.item.name,
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
+                                      if (cartItem.imageUrl.isNotEmpty)
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(8),
+                                          child: Image.network(
+                                            cartItem.imageUrl,
+                                            width: 80,
+                                            height: 80,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              cartItem.name,
+                                              style: Theme.of(context).textTheme.titleMedium,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              '${cartItem.quantity} x Rp ${NumberFormat.decimalPattern('id').format(cartItem.price)}',
+                                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                                color: Colors.grey[600],
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                      const SizedBox(height: 4),
                                       Text(
-                                        _currencyFormat.format(widget.item.price),
-                                        style: const TextStyle(
-                                          color: Colors.green,
+                                        'Rp ${NumberFormat.decimalPattern('id').format(cartItem.quantity * cartItem.price)}',
+                                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                     ],
                                   ),
-                                ),
-                              ],
-                            ),
-                            const Divider(height: 32),
+                                )).toList(),
+                            const Divider(),
+                            const SizedBox(height: 16),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text('Total Pembayaran'),
                                 Text(
-                                  _currencyFormat.format(widget.item.price),
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 18,
-                                  ),
+                                  'Total:',
+                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                                ),
+                                Text(
+                                  'Rp ${NumberFormat.decimalPattern('id').format(widget.cartItems.fold(0.0, (sum, item) => sum + (item.price * item.quantity)))} ',
+                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, color: Theme.of(context).primaryColor),
                                 ),
                               ],
                             ),
@@ -293,222 +315,239 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
 
                     // Pilihan Alamat
-                    Text(
-                      'Alamat Pengiriman',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 16),
-                    StreamBuilder<QuerySnapshot>(
-                      stream: FirebaseFirestore.instance
-                          .collection('user_addresses')
-                          .where('userId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
-                          .orderBy('isDefault', descending: true)
-                          .snapshots(),
-                      builder: (context, snapshot) {
-                        if (snapshot.hasError) {
-                          return Text('Error: ${snapshot.error}');
-                        }
-
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const CircularProgressIndicator();
-                        }
-
-                        final addresses = snapshot.data?.docs
-                            .map((doc) => UserAddress.fromMap({
-                                  'id': doc.id,
-                                  ...doc.data() as Map<String, dynamic>,
-                                }))
-                            .toList() ??
-                            [];
-
-                        if (addresses.isEmpty) {
-                          _useSavedAddress = false;
-                        }
-
-                        return Column(
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (addresses.isNotEmpty) ...[
-                              SwitchListTile(
-                                title: const Text('Gunakan Alamat Tersimpan'),
-                                value: _useSavedAddress,
-                                onChanged: (value) {
-                                  setState(() {
-                                    _useSavedAddress = value;
-                                    if (value && _selectedAddress != null) {
-                                      _fillAddressForm(_selectedAddress!);
-                                    } else if (!value) {
-                                      _fullNameController.clear();
-                                      _phoneController.clear();
-                                      _addressController.clear();
-                                      _cityController.clear();
-                                      _provinceController.clear();
-                                      _postalCodeController.clear();
-                                      _notesController.clear();
-                                    }
-                                  });
-                                },
-                              ),
-                              if (_useSavedAddress) ...[
-                                const SizedBox(height: 16),
-                                DropdownButtonFormField<UserAddress>(
-                                  value: _selectedAddress,
-                                  isExpanded: true,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Pilih Alamat',
-                                    border: OutlineInputBorder(),
-                                  ),
-                                  items: addresses.map((address) {
-                                    return DropdownMenuItem(
-                                      value: address,
-                                      child: Expanded(
-                                        child: Text(
-                                          '${address.fullName} - ${address.address}, ${address.city}',
-                                          overflow: TextOverflow.ellipsis,
+                            Text(
+                              'Alamat Pengiriman',
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
+                            const SizedBox(height: 16),
+                            StreamBuilder<QuerySnapshot>(
+                              stream: FirebaseFirestore.instance
+                                  .collection('user_addresses')
+                                  .where('userId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
+                                  .orderBy('isDefault', descending: true)
+                                  .snapshots(),
+                              builder: (context, snapshot) {
+                                if (snapshot.hasError) {
+                                  return Text('Error: ${snapshot.error}');
+                                }
+
+                                if (snapshot.connectionState == ConnectionState.waiting) {
+                                  return const CircularProgressIndicator();
+                                }
+
+                                final addresses = snapshot.data?.docs
+                                    .map((doc) => UserAddress.fromMap({
+                                          'id': doc.id,
+                                          ...doc.data() as Map<String, dynamic>,
+                                        }))
+                                    .toList() ??
+                                    [];
+
+                                if (addresses.isEmpty) {
+                                  _useSavedAddress = false;
+                                }
+
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (addresses.isNotEmpty) ...[
+                                      SwitchListTile(
+                                        title: const Text('Gunakan Alamat Tersimpan'),
+                                        value: _useSavedAddress,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            _useSavedAddress = value;
+                                            if (value && _selectedAddress != null) {
+                                              _fillAddressForm(_selectedAddress!);
+                                            } else if (!value) {
+                                              _fullNameController.clear();
+                                              _phoneController.clear();
+                                              _addressController.clear();
+                                              _cityController.clear();
+                                              _provinceController.clear();
+                                              _postalCodeController.clear();
+                                              _notesController.clear();
+                                            }
+                                          });
+                                        },
+                                      ),
+                                      if (_useSavedAddress) ...[
+                                        const SizedBox(height: 16),
+                                        DropdownButtonFormField<UserAddress>(
+                                          value: _selectedAddress,
+                                          isExpanded: true,
+                                          decoration: InputDecoration(
+                                            labelText: 'Pilih Alamat',
+                                            border: const OutlineInputBorder(),
+                                            prefixIcon: const Icon(Icons.location_on),
+                                            contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                                          ),
+                                          items: addresses.map((address) {
+                                            return DropdownMenuItem(
+                                              value: address,
+                                              child: Expanded(
+                                                child: Text(
+                                                  '${address.fullName} - ${address.address}, ${address.city}',
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            );
+                                          }).toList(),
+                                          onChanged: (value) {
+                                            if (value != null) {
+                                              setState(() {
+                                                _selectedAddress = value;
+                                                _fillAddressForm(value);
+                                              });
+                                            }
+                                          },
+                                          selectedItemBuilder: (BuildContext context) {
+                                            return addresses.map<Widget>((UserAddress address) {
+                                              return Text(
+                                                '${address.fullName} - ${address.address}, ${address.city} ${address.province} ${address.postalCode}',
+                                                overflow: TextOverflow.ellipsis,
+                                                maxLines: 1,
+                                              ) as Widget;
+                                            }).toList();
+                                          },
                                         ),
+                                      ],
+                                    ],
+                                    if (!_useSavedAddress) ...[
+                                      TextFormField(
+                                        controller: _fullNameController,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Nama Lengkap',
+                                          border: OutlineInputBorder(),
+                                          prefixIcon: Icon(Icons.person),
+                                          contentPadding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                                        ),
+                                        validator: (value) {
+                                          if (value == null || value.isEmpty) {
+                                            return 'Nama lengkap harus diisi';
+                                          }
+                                          return null;
+                                        },
                                       ),
-                                    );
-                                  }).toList(),
-                                  onChanged: (value) {
-                                    if (value != null) {
-                                      setState(() {
-                                        _selectedAddress = value;
-                                        _fillAddressForm(value);
-                                      });
-                                    }
-                                  },
-                                  selectedItemBuilder: (BuildContext context) {
-                                    return addresses.map<Widget>((UserAddress address) {
-                                      return Text(
-                                        '${address.fullName} - ${address.address}, ${address.city} ${address.province} ${address.postalCode}',
-                                        overflow: TextOverflow.ellipsis,
-                                        maxLines: 1,
-                                      );
-                                    }).toList();
-                                  },
-                                ),
-                              ],
-                            ],
-                            if (!_useSavedAddress) ...[
-                              TextFormField(
-                                controller: _fullNameController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Nama Lengkap',
-                                  border: OutlineInputBorder(),
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Nama lengkap harus diisi';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 16),
-                              TextFormField(
-                                controller: _phoneController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Nomor Telepon',
-                                  border: OutlineInputBorder(),
-                                ),
-                                keyboardType: TextInputType.phone,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Nomor telepon harus diisi';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 16),
-                              TextFormField(
-                                controller: _addressController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Alamat Lengkap',
-                                  border: OutlineInputBorder(),
-                                ),
-                                maxLines: 3,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Alamat harus diisi';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 16),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: TextFormField(
-                                      controller: _cityController,
-                                      decoration: const InputDecoration(
-                                        labelText: 'Kota',
-                                        border: OutlineInputBorder(),
+                                      const SizedBox(height: 16),
+                                      TextFormField(
+                                        controller: _phoneController,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Nomor Telepon',
+                                          border: OutlineInputBorder(),
+                                          prefixIcon: Icon(Icons.phone),
+                                          contentPadding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                                        ),
+                                        keyboardType: TextInputType.phone,
+                                        validator: (value) {
+                                          if (value == null || value.isEmpty) {
+                                            return 'Nomor telepon harus diisi';
+                                          }
+                                          return null;
+                                        },
                                       ),
-                                      validator: (value) {
-                                        if (value == null || value.isEmpty) {
-                                          return 'Kota harus diisi';
-                                        }
-                                        return null;
-                                      },
-                                    ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: TextFormField(
-                                      controller: _provinceController,
-                                      decoration: const InputDecoration(
-                                        labelText: 'Provinsi',
-                                        border: OutlineInputBorder(),
+                                      const SizedBox(height: 16),
+                                      TextFormField(
+                                        controller: _addressController,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Alamat Lengkap',
+                                          border: OutlineInputBorder(),
+                                          prefixIcon: Icon(Icons.home),
+                                          contentPadding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                                        ),
+                                        maxLines: 3,
+                                        validator: (value) {
+                                          if (value == null || value.isEmpty) {
+                                            return 'Alamat harus diisi';
+                                          }
+                                          return null;
+                                        },
                                       ),
-                                      validator: (value) {
-                                        if (value == null || value.isEmpty) {
-                                          return 'Provinsi harus diisi';
-                                        }
-                                        return null;
-                                      },
-                                    ),
-                                  ),
-                                ],
+                                      const SizedBox(height: 16),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: TextFormField(
+                                              controller: _cityController,
+                                              decoration: const InputDecoration(
+                                                labelText: 'Kota',
+                                                border: OutlineInputBorder(),
+                                                prefixIcon: Icon(Icons.location_city),
+                                                contentPadding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                                              ),
+                                              validator: (value) {
+                                                if (value == null || value.isEmpty) {
+                                                  return 'Kota harus diisi';
+                                                }
+                                                return null;
+                                              },
+                                            ),
+                                          ),
+                                          const SizedBox(width: 16),
+                                          Expanded(
+                                            child: TextFormField(
+                                              controller: _provinceController,
+                                              decoration: const InputDecoration(
+                                                labelText: 'Provinsi',
+                                                border: OutlineInputBorder(),
+                                                prefixIcon: Icon(Icons.area_chart),
+                                                contentPadding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                                              ),
+                                              validator: (value) {
+                                                if (value == null || value.isEmpty) {
+                                                  return 'Provinsi harus diisi';
+                                                }
+                                                return null;
+                                              },
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 16),
+                                      TextFormField(
+                                        controller: _postalCodeController,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Kode Pos',
+                                          border: OutlineInputBorder(),
+                                          prefixIcon: Icon(Icons.mail),
+                                          contentPadding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                                        ),
+                                        keyboardType: TextInputType.number,
+                                        validator: (value) {
+                                          if (value == null || value.isEmpty) {
+                                            return 'Kode pos harus diisi';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                    ],
+                                  ],
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 16), // Jarak antara alamat dan catatan
+                            TextFormField(
+                              controller: _notesController,
+                              decoration: const InputDecoration(
+                                labelText: 'Catatan (Opsional)',
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.note),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                               ),
-                              const SizedBox(height: 16),
-                              TextFormField(
-                                controller: _postalCodeController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Kode Pos',
-                                  border: OutlineInputBorder(),
-                                ),
-                                keyboardType: TextInputType.number,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Kode pos harus diisi';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 16),
-                              TextFormField(
-                                controller: _notesController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Catatan (Opsional)',
-                                  border: OutlineInputBorder(),
-                                ),
-                                maxLines: 2,
-                              ),
-                            ],
+                              maxLines: 2,
+                            ),
                           ],
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _notesController,
-                      decoration: const InputDecoration(
-                        labelText: 'Catatan (Opsional)',
-                        border: OutlineInputBorder(),
+                        ),
                       ),
-                      maxLines: 2,
                     ),
                     const SizedBox(height: 24),
 
@@ -519,32 +558,35 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     ),
                     const SizedBox(height: 16),
                     Card(
-                      child: Column(
-                        children: [
-                          RadioListTile<String>(
-                            title: const Text('Transfer Bank'),
-                            value: 'transfer_bank',
-                            groupValue: _selectedPaymentMethod,
-                            onChanged: (value) {
-                              setState(() {
-                                _selectedPaymentMethod = value!;
-                              });
-                            },
-                          ),
-                          RadioListTile<String>(
-                            title: const Text('E-Wallet'),
-                            value: 'e_wallet',
-                            groupValue: _selectedPaymentMethod,
-                            onChanged: (value) {
-                              setState(() {
-                                _selectedPaymentMethod = value!;
-                              });
-                            },
-                          ),
-                        ],
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          children: [
+                            RadioListTile<String>(
+                              title: Text('Transfer Bank', style: Theme.of(context).textTheme.bodyLarge),
+                              value: 'transfer_bank',
+                              groupValue: _selectedPaymentMethod,
+                              onChanged: (value) {
+                                setState(() {
+                                  _selectedPaymentMethod = value!;
+                                });
+                              },
+                            ),
+                            RadioListTile<String>(
+                              title: Text('E-Wallet', style: Theme.of(context).textTheme.bodyLarge),
+                              value: 'e_wallet',
+                              groupValue: _selectedPaymentMethod,
+                              onChanged: (value) {
+                                setState(() {
+                                  _selectedPaymentMethod = value!;
+                                });
+                              },
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 24),
 
                     // Tombol Bayar
                     SizedBox(

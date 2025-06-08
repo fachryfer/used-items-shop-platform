@@ -199,23 +199,18 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                   child: Form(
                     key: _formKey,
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          _isEditing ? 'Edit Alamat' : 'Tambah Alamat Baru',
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        const SizedBox(height: 16),
                         TextFormField(
                           controller: _fullNameController,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Nama Lengkap',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.person),
+                            prefixIcon: const Icon(Icons.person),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Nama lengkap harus diisi';
+                              return 'Mohon masukkan nama lengkap';
                             }
                             return null;
                           },
@@ -223,15 +218,15 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                         const SizedBox(height: 16),
                         TextFormField(
                           controller: _phoneController,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Nomor Telepon',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.phone),
+                            prefixIcon: const Icon(Icons.phone),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                           ),
                           keyboardType: TextInputType.phone,
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Nomor telepon harus diisi';
+                              return 'Mohon masukkan nomor telepon';
                             }
                             return null;
                           },
@@ -239,15 +234,15 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                         const SizedBox(height: 16),
                         TextFormField(
                           controller: _addressController,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Alamat Lengkap',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.location_on),
+                            prefixIcon: const Icon(Icons.home),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                           ),
                           maxLines: 3,
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Alamat harus diisi';
+                              return 'Mohon masukkan alamat lengkap';
                             }
                             return null;
                           },
@@ -258,14 +253,14 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                             Expanded(
                               child: TextFormField(
                                 controller: _cityController,
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   labelText: 'Kota',
-                                  border: OutlineInputBorder(),
-                                  prefixIcon: Icon(Icons.location_city),
+                                  prefixIcon: const Icon(Icons.location_city),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                                 ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
-                                    return 'Kota harus diisi';
+                                    return 'Mohon masukkan kota';
                                   }
                                   return null;
                                 },
@@ -275,14 +270,14 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                             Expanded(
                               child: TextFormField(
                                 controller: _provinceController,
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   labelText: 'Provinsi',
-                                  border: OutlineInputBorder(),
-                                  prefixIcon: Icon(Icons.area_chart),
+                                  prefixIcon: const Icon(Icons.area_chart),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                                 ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
-                                    return 'Provinsi harus diisi';
+                                    return 'Mohon masukkan provinsi';
                                   }
                                   return null;
                                 },
@@ -293,50 +288,38 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                         const SizedBox(height: 16),
                         TextFormField(
                           controller: _postalCodeController,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Kode Pos',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.local_post_office),
+                            prefixIcon: const Icon(Icons.mail),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                           ),
                           keyboardType: TextInputType.number,
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Kode pos harus diisi';
+                              return 'Mohon masukkan kode pos';
                             }
                             return null;
                           },
                         ),
                         const SizedBox(height: 16),
-                        CheckboxListTile(
-                          title: const Text('Jadikan Alamat Default'),
+                        SwitchListTile(
+                          title: const Text('Jadikan Alamat Utama'),
                           value: _isDefault,
                           onChanged: (value) {
                             setState(() {
-                              _isDefault = value ?? false;
+                              _isDefault = value;
                             });
                           },
                         ),
                         const SizedBox(height: 24),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: _resetForm,
-                                child: const Text('Batal'),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: ElevatedButton(
-                                onPressed: _saveAddress,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Theme.of(context).primaryColor,
-                                  foregroundColor: Colors.white,
-                                ),
-                                child: Text(_isEditing ? 'Simpan Perubahan' : 'Simpan Alamat'),
-                              ),
-                            ),
-                          ],
+                        ElevatedButton(
+                          onPressed: _saveAddress,
+                          child: Text(_isEditing ? 'Perbarui Alamat' : 'Tambah Alamat'),
+                        ),
+                        const SizedBox(height: 16),
+                        TextButton(
+                          onPressed: _resetForm,
+                          child: const Text('Batal'),
                         ),
                       ],
                     ),
@@ -365,41 +348,33 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
               itemBuilder: (context, index) {
                 final address = addresses[index];
                 return Card(
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  margin: const EdgeInsets.symmetric(vertical: 8.0),
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Icon(Icons.location_on, color: Colors.blue, size: 24),
-                            const SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 address.fullName,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
+                                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                               ),
                             ),
                             if (address.isDefault)
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: Colors.green[100],
-                                  borderRadius: BorderRadius.circular(5),
+                                  color: Theme.of(context).colorScheme.primary,
+                                  borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: const Text(
-                                  'Default',
-                                  style: TextStyle(
-                                    color: Colors.green,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                  ),
+                                  'UTAMA',
+                                  style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                                 ),
                               ),
                           ],
@@ -407,25 +382,24 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
                         const SizedBox(height: 8),
                         Text(
                           address.phoneNumber,
-                          style: TextStyle(color: Colors.grey[700]),
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8)),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '${address.address}, ${address.city}, ${address.province} ${address.postalCode}',
-                          style: TextStyle(color: Colors.grey[700]),
+                          '${address.address}, ${address.city}, ${address.province}, ${address.postalCode}',
+                          style: Theme.of(context).textTheme.bodyMedium,
                         ),
-                        const Divider(height: 24),
+                        const Divider(height: 24, thickness: 1),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            TextButton(
+                            IconButton(
+                              icon: const Icon(Icons.edit, color: Colors.blue),
                               onPressed: () => _showEditForm(address),
-                              child: const Text('Edit'),
                             ),
-                            const SizedBox(width: 8),
-                            TextButton(
-                              onPressed: () => _deleteAddress(address.id),
-                              child: const Text('Hapus', style: TextStyle(color: Colors.red)),
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () => _deleteAddress(address.id!),
                             ),
                           ],
                         ),
@@ -437,17 +411,18 @@ class _AddressManagementScreenState extends State<AddressManagementScreen> {
             );
           }
 
-          return Stack(
+          return Column(
             children: [
-              Positioned.fill(child: content),
-              if (!_showForm && addresses.isNotEmpty)
-                Positioned(
-                  bottom: 16,
-                  right: 16,
+              Expanded(child: content),
+              if (!_showForm)
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
                   child: FloatingActionButton.extended(
                     onPressed: _showAddForm,
                     label: const Text('Tambah Alamat Baru'),
                     icon: const Icon(Icons.add),
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
                   ),
                 ),
             ],

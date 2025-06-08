@@ -87,88 +87,120 @@ class _RegisterScreenState extends State<RegisterScreen> {
           : Center(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(24.0),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: <Widget>[
-                      TextFormField(
-                        controller: _nameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Nama Lengkap',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.person),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Mohon masukkan nama lengkap Anda';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 20),
-                      TextFormField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(
-                          labelText: 'Email',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.email),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Mohon masukkan email Anda';
-                          }
-                          if (!value.contains('@')) {
-                            return 'Email tidak valid';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 20),
-                      TextFormField(
-                        controller: _passwordController,
-                        obscureText: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Password',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.lock),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Mohon masukkan password Anda';
-                          }
-                          if (value.length < 6) {
-                            return 'Password minimal 6 karakter';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 25),
-                      ElevatedButton(
-                        onPressed: _isLoading ? null : _register,
-                        style: ElevatedButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 50),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    // Logo atau Gambar Aplikasi
+                    Image.asset(
+                      'assets/app_logo.png', // Ganti dengan path logo aplikasi Anda
+                      height: 120,
+                    ),
+                    const SizedBox(height: 30),
+                    Card(
+                      elevation: 4,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(20.0),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              TextFormField(
+                                controller: _nameController,
+                                decoration: InputDecoration(
+                                  labelText: 'Nama Lengkap',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8.0),
+                                  ),
+                                  prefixIcon: const Icon(Icons.person),
+                                  contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Mohon masukkan nama lengkap Anda';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 20),
+                              TextFormField(
+                                controller: _emailController,
+                                keyboardType: TextInputType.emailAddress,
+                                decoration: InputDecoration(
+                                  labelText: 'Email',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8.0),
+                                  ),
+                                  prefixIcon: const Icon(Icons.email),
+                                  contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Mohon masukkan email Anda';
+                                  }
+                                  if (!value.contains('@')) {
+                                    return 'Email tidak valid';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 20),
+                              TextFormField(
+                                controller: _passwordController,
+                                obscureText: true,
+                                decoration: InputDecoration(
+                                  labelText: 'Password',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8.0),
+                                  ),
+                                  prefixIcon: const Icon(Icons.lock),
+                                  contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Mohon masukkan password Anda';
+                                  }
+                                  if (value.length < 6) {
+                                    return 'Password minimal 6 karakter';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 25),
+                              ElevatedButton(
+                                onPressed: _isLoading ? null : _register,
+                                style: ElevatedButton.styleFrom(
+                                  minimumSize: const Size(double.infinity, 50),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  backgroundColor: Theme.of(context).colorScheme.primary, // Gunakan primary color dari tema
+                                  foregroundColor: Colors.white, // Warna teks putih
+                                ),
+                                child: _isLoading
+                                    ? const CircularProgressIndicator(color: Colors.white)
+                                    : const Text(
+                                        'Daftar',
+                                        style: TextStyle(fontSize: 18),
+                                      ),
+                              ),
+                            ],
                           ),
                         ),
-                        child: _isLoading
-                            ? const CircularProgressIndicator(color: Colors.white)
-                            : const Text(
-                                'Daftar',
-                                style: TextStyle(fontSize: 18),
-                              ),
                       ),
-                      const SizedBox(height: 15),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.of(context).pushReplacementNamed('/login');
-                        },
-                        child: const Text('Sudah punya akun? Login di sini'),
+                    ),
+                    const SizedBox(height: 15),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pushReplacementNamed('/login');
+                      },
+                      child: Text(
+                        'Sudah punya akun? Login di sini',
+                        style: TextStyle(color: Theme.of(context).colorScheme.primary), // Gunakan primary color
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),

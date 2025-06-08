@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import '../../models/order.dart' as app_order; // Beri alias untuk model Order kita
 import '../../models/item.dart';
-import 'package:cloud_firestore_platform_interface/cloud_firestore_platform_interface.dart' as firestore_platform; // Alias yang sudah ada
+import 'package:edar_shop/models/cart_item.dart';
 
 class AdminOrderManagementScreen extends StatelessWidget {
   const AdminOrderManagementScreen({Key? key}) : super(key: key);
@@ -14,9 +14,6 @@ class AdminOrderManagementScreen extends StatelessWidget {
 
     return Column(
       children: [
-        const SizedBox(height: 16),
-        const Text('Manajemen Pesanan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        const SizedBox(height: 8),
         Expanded(
           child: StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
@@ -41,74 +38,178 @@ class AdminOrderManagementScreen extends StatelessWidget {
               }).toList();
 
               return ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.all(12),
                 itemCount: orders.length,
                 itemBuilder: (context, index) {
                   final order = orders[index];
                   return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 6),
-                    child: ListTile(
-                      leading: order.itemImageUrl != null
-                          ? Image.network(order.itemImageUrl!, width: 50, height: 50, fit: BoxFit.cover)
-                          : const Icon(Icons.image_not_supported, size: 50),
-                      title: Text('${order.itemName} (x${order.quantity})', style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Column(
+                    elevation: 4,
+                    margin: const EdgeInsets.symmetric(vertical: 8.0),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    clipBehavior: Clip.antiAlias,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Pembeli: ${order.buyerName}'),
-                          Text('Total: Rp ${oCcy.format(order.itemPrice * order.quantity)}'),
-                          Text('Status: ${order.status.toUpperCase()}'),
+                          // Menggunakan ListView.builder untuk menampilkan setiap item dalam pesanan
+                          ...order.cartItems.map((cartItem) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4.0),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: cartItem.imageUrl.isNotEmpty
+                                        ? Image.network(cartItem.imageUrl,
+                                            width: 60, height: 60, fit: BoxFit.cover)
+                                        : Container(
+                                            width: 60, height: 60, color: Theme.of(context).colorScheme.surface,
+                                            child: const Icon(Icons.image_not_supported, size: 30, color: Colors.grey),
+                                          ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '${cartItem.name} (x${cartItem.quantity})',
+                                          style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Rp ${oCcy.format(cartItem.price * cartItem.quantity)}',
+                                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.primary),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                          const Divider(height: 24, thickness: 1),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Total Pesanan:',
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                              ),
+                              Text(
+                                'Rp ${oCcy.format(order.totalAmount)}',
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Icon(Icons.person, size: 16, color: Theme.of(context).textTheme.bodySmall?.color),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Pembeli: ${order.buyerName}',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
                           if (order.orderDate != null)
-                            Text('Tanggal: ${DateFormat('dd MMMM yyyy, HH:mm').format(order.orderDate!)}'),
-                        ],
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (order.status == 'pending') ...[
-                            IconButton(
-                              icon: const Icon(Icons.check_circle, color: Colors.green),
-                              onPressed: () async {
-                                try {
-                                  await FirebaseFirestore.instance.collection('orders').doc(order.id).update({'status': 'completed'});
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Pesanan diselesaikan.'), backgroundColor: Colors.green)
-                                  );
-                                } catch (e) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Gagal menyelesaikan pesanan: $e'), backgroundColor: Colors.red)
-                                  );
-                                }
-                              },
+                            Row(
+                              children: [
+                                Icon(Icons.calendar_today, size: 16, color: Theme.of(context).textTheme.bodySmall?.color),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Tanggal: ${DateFormat('dd MMMM yyyy, HH:mm').format(order.orderDate!)}',
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ],
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.cancel, color: Colors.red),
-                              onPressed: () async {
-                                try {
-                                  await FirebaseFirestore.instance.runTransaction((transaction) async {
-                                    // Get item reference
-                                    final itemRef = FirebaseFirestore.instance.collection('items').doc(order.itemId);
-                                    final itemSnapshot = await transaction.get(itemRef);
-
-                                    if (itemSnapshot.exists) {
-                                      final currentStock = (itemSnapshot.data()?['stock'] ?? 0).toInt();
-                                      // Restore stock
-                                      transaction.update(itemRef, {'stock': currentStock + order.quantity, 'updatedAt': FieldValue.serverTimestamp()});
+                          const SizedBox(height: 8),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: _getStatusColor(order.status),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                order.status.toUpperCase(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8), // Added spacing below status
+                          // Tombol Aksi
+                          if (order.status == 'pending')
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end, // Align buttons to the right
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.check_circle, color: Colors.green),
+                                  tooltip: 'Selesaikan Pesanan',
+                                  onPressed: () async {
+                                    try {
+                                      await FirebaseFirestore.instance.collection('orders').doc(order.id).update({'status': 'completed'});
+                                      // Stock is deducted during checkout, no need to deduct here for completion
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('Pesanan diselesaikan.'), backgroundColor: Colors.green)
+                                        );
+                                      }
+                                    } catch (e) {
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text('Gagal menyelesaikan pesanan: $e'), backgroundColor: Colors.red)
+                                        );
+                                      }
                                     }
-                                    // Update order status to cancelled
-                                    transaction.update(FirebaseFirestore.instance.collection('orders').doc(order.id), {'status': 'cancelled'});
-                                  });
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Pesanan dibatalkan dan stok dikembalikan!'), backgroundColor: Colors.orange)
-                                  );
-                                } catch (e) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Gagal membatalkan pesanan: $e'), backgroundColor: Colors.red)
-                                  );
-                                }
-                              },
+                                  },
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.cancel, color: Colors.red),
+                                  tooltip: 'Batalkan Pesanan',
+                                  onPressed: () async {
+                                    try {
+                                      await FirebaseFirestore.instance.runTransaction((transaction) async {
+                                        for (var cartItem in order.cartItems) {
+                                          final itemRef = FirebaseFirestore.instance.collection('items').doc(cartItem.itemId);
+                                          final itemSnapshot = await transaction.get(itemRef);
+
+                                          if (itemSnapshot.exists) {
+                                            final currentStock = (itemSnapshot.data()?['stock'] ?? 0).toInt();
+                                            // Restore stock for each item
+                                            transaction.update(itemRef, {'stock': currentStock + cartItem.quantity, 'updatedAt': FieldValue.serverTimestamp()});
+                                          }
+                                        }
+                                        // Update order status to cancelled
+                                        transaction.update(FirebaseFirestore.instance.collection('orders').doc(order.id), {'status': 'cancelled'});
+                                      });
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('Pesanan dibatalkan dan stok dikembalikan!'), backgroundColor: Colors.orange)
+                                        );
+                                      }
+                                    } catch (e) {
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text('Gagal membatalkan pesanan: $e'), backgroundColor: Colors.red)
+                                        );
+                                      }
+                                    }
+                                  },
+                                ),
+                              ],
                             ),
-                          ]
                         ],
                       ),
                     ),
@@ -120,6 +221,23 @@ class AdminOrderManagementScreen extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return Colors.orange;
+      case 'completed':
+        return Colors.green;
+      case 'cancelled':
+        return Colors.red;
+      case 'shipped':
+        return Colors.blue;
+      case 'delivered':
+        return Colors.purple;
+      default:
+        return Colors.grey;
+    }
   }
 }
  
