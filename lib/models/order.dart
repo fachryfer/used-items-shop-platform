@@ -13,6 +13,8 @@ class Order {
   final DateTime? orderDate;
   final Map<String, dynamic>? shippingAddress;
   final String? paymentMethod;
+  final Map<String, dynamic>? paymentDetails;
+  final String? transferProofImageUrl;
 
   Order({
     required this.id,
@@ -26,6 +28,8 @@ class Order {
     this.orderDate,
     this.shippingAddress,
     this.paymentMethod,
+    this.paymentDetails,
+    this.transferProofImageUrl,
   });
 
   factory Order.fromFirestore(Map<String, dynamic> data, String id) {
@@ -46,6 +50,8 @@ class Order {
       orderDate: (data['orderDate'] as Timestamp?)?.toDate(),
       shippingAddress: data['shippingAddress'] as Map<String, dynamic>?,
       paymentMethod: data['paymentMethod'] as String?,
+      paymentDetails: data['paymentDetails'] as Map<String, dynamic>?,
+      transferProofImageUrl: data['transferProofImageUrl'] as String?,
     );
   }
 
@@ -61,6 +67,8 @@ class Order {
       'orderDate': orderDate != null ? Timestamp.fromDate(orderDate!) : FieldValue.serverTimestamp(),
       'shippingAddress': shippingAddress,
       'paymentMethod': paymentMethod,
+      'paymentDetails': paymentDetails,
+      'transferProofImageUrl': transferProofImageUrl,
     };
   }
 } 

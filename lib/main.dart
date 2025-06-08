@@ -10,12 +10,17 @@ import 'package:edar_shop/screens/admin/admin_home_screen.dart'; // Our newly cr
 import 'package:provider/provider.dart';
 import 'package:edar_shop/utils/cart_manager.dart';
 import 'package:edar_shop/screens/user/cart_screen.dart'; // Jalur yang benar
+import 'package:intl/intl.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  // Initialize date formatting for 'id' locale
+  Intl.defaultLocale = 'id';
+  await initializeDateFormatting('id', null);
   runApp(const MyApp());
 }
 

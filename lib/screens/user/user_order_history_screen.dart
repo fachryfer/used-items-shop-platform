@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:edar_shop/models/order.dart' as models;
+import 'package:edar_shop/screens/order_details_screen.dart';
 import 'package:intl/intl.dart';
 import 'package:edar_shop/models/cart_item.dart';
-import 'package:edar_shop/screens/user/order_details_screen.dart';
 
 class UserOrderHistoryScreen extends StatelessWidget {
   const UserOrderHistoryScreen({Key? key}) : super(key: key);

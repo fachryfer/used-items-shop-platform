@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:edar_shop/screens/admin/payment_method_management_screen.dart';
 
 class AdminProfileScreen extends StatelessWidget {
   const AdminProfileScreen({Key? key}) : super(key: key);
@@ -24,6 +25,15 @@ class AdminProfileScreen extends StatelessWidget {
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 30),
+          _buildProfileMenuItem(
+            context: context,
+            icon: Icons.credit_card,
+            title: 'Kelola Metode Pembayaran',
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const PaymentMethodManagementScreen()));
+            },
+          ),
+          const Spacer(),
           ElevatedButton.icon(
             onPressed: () async {
               await FirebaseAuth.instance.signOut();
@@ -44,6 +54,20 @@ class AdminProfileScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildProfileMenuItem({
+    required BuildContext context,
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: Theme.of(context).primaryColor),
+      title: Text(title),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: onTap,
     );
   }
 } 

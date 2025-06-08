@@ -7,6 +7,8 @@ import '../models/order.dart' as models;
 import 'package:intl/intl.dart';
 import 'user/address_management_screen.dart';
 import '../models/cart_item.dart';
+import 'package:http/http.dart' as http;
+import 'user/upload_transfer_proof_screen.dart';
 
 class CheckoutScreen extends StatefulWidget {
   final List<CartItem> cartItems;
@@ -38,10 +40,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   bool _useSavedAddress = true;
   UserAddress? _selectedAddress;
 
+  List<Map<String, dynamic>> _availablePaymentMethods = [];
+  Map<String, dynamic>? _selectedPaymentMethodDetails;
+
   @override
   void initState() {
     super.initState();
     _loadDefaultAddress();
+    _loadPaymentMethods();
   }
 
   @override
@@ -84,6 +90,26 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
+  Future<void> _loadPaymentMethods() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance.collection('payment_methods').get();
+      setState(() {
+        _availablePaymentMethods = snapshot.docs.map((doc) => doc.data()).toList();
+        if (_availablePaymentMethods.isNotEmpty) {
+          _selectedPaymentMethodDetails = _availablePaymentMethods.first;
+          _selectedPaymentMethod = _selectedPaymentMethodDetails!['bankName'] ?? '';
+        }
+      });
+    } catch (e) {
+      print('Error loading payment methods: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal memuat metode pembayaran: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   void _fillAddressForm(UserAddress address) {
     _fullNameController.text = address.fullName;
     _phoneController.text = address.phoneNumber;
@@ -96,6 +122,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   Future<void> _processOrder() async {
     if (!_formKey.currentState!.validate()) return;
+
+    if (_selectedPaymentMethodDetails == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Mohon pilih metode pembayaran.'), backgroundColor: Colors.red),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
 
@@ -131,75 +164,43 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         });
       }
 
-      await FirebaseFirestore.instance.runTransaction((transaction) async {
-        double totalAmount = 0.0;
-        final List<Map<String, dynamic>> itemsToUpdate = [];
+      // Calculate total amount from cart items
+      double totalAmount = widget.cartItems.fold(0.0, (sum, item) => sum + (item.price * item.quantity));
 
-        // Fase 1: Semua pembacaan dan validasi
-        for (var cartItem in widget.cartItems) {
-          final itemRef = FirebaseFirestore.instance.collection('items').doc(cartItem.itemId);
-          final itemSnapshot = await transaction.get(itemRef);
-
-          if (!itemSnapshot.exists) {
-            throw Exception('Barang ${cartItem.name} tidak ditemukan');
-          }
-
-          final currentStock = (itemSnapshot.data()?['stock'] ?? 0).toInt();
-          if (currentStock < cartItem.quantity) {
-            throw Exception('Stok barang ${cartItem.name} tidak mencukupi. Stok tersedia: $currentStock');
-          }
-
-          totalAmount += cartItem.price * cartItem.quantity;
-          itemsToUpdate.add({
-            'ref': itemRef,
-            'newStock': currentStock - cartItem.quantity,
-          });
-        }
-
-        // Fase 2: Semua penulisan
-        for (var itemData in itemsToUpdate) {
-          transaction.update(itemData['ref'], {
-            'stock': itemData['newStock'],
-            'updatedAt': FieldValue.serverTimestamp()
-          });
-        }
-
-        // Buat pesanan baru
-        final newOrder = models.Order(
-          id: '',
-          cartItems: widget.cartItems,
-          totalAmount: totalAmount,
-          buyerId: user.uid,
-          buyerName: user.displayName ?? user.email ?? 'Pengguna',
-          sellerId: '',
-          sellerName: 'N/A',
-          status: 'pending',
-          orderDate: DateTime.now(),
-          shippingAddress: shippingAddress.toMap(),
-          paymentMethod: _selectedPaymentMethod,
-        );
-
-        // Tambahkan pesanan ke koleksi orders
-        final orderRef = FirebaseFirestore.instance.collection('orders').doc();
-        transaction.set(orderRef, {
-          ...newOrder.toFirestore(),
-        });
-      });
+      // Prepare order data to pass to UploadTransferProofScreen
+      final orderData = models.Order(
+        id: '', // ID will be generated in UploadTransferProofScreen
+        cartItems: widget.cartItems,
+        totalAmount: totalAmount,
+        buyerId: user.uid,
+        buyerName: user.displayName ?? user.email ?? 'Pengguna',
+        sellerId: '', // Will be aggregated later if needed
+        sellerName: 'N/A', // Will be aggregated later if needed
+        status: 'pending', // Initial status before transfer proof
+        orderDate: DateTime.now(),
+        shippingAddress: shippingAddress.toMap(),
+        paymentMethod: _selectedPaymentMethod,
+        paymentDetails: _selectedPaymentMethodDetails,
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Pesanan berhasil dibuat! Silakan lakukan pembayaran.'),
-            backgroundColor: Colors.green,
+            content: Text('Pesanan siap dikonfirmasi. Unggah bukti transfer.'),
+            backgroundColor: Colors.blueAccent,
           ),
         );
-        Navigator.of(context).pop(true);
+        Navigator.of(context).pushReplacement(MaterialPageRoute(
+          builder: (context) => UploadTransferProofScreen(
+            orderData: orderData,
+          ),
+        ));
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal membuat pesanan: ${e.toString()}'),
+            content: Text('Gagal melanjutkan pesanan: ${e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -499,7 +500,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                               decoration: const InputDecoration(
                                                 labelText: 'Provinsi',
                                                 border: OutlineInputBorder(),
-                                                prefixIcon: Icon(Icons.area_chart),
+                                                prefixIcon: Icon(Icons.map),
                                                 contentPadding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                                               ),
                                               validator: (value) {
@@ -518,7 +519,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                         decoration: const InputDecoration(
                                           labelText: 'Kode Pos',
                                           border: OutlineInputBorder(),
-                                          prefixIcon: Icon(Icons.mail),
+                                          prefixIcon: Icon(Icons.local_post_office),
                                           contentPadding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                                         ),
                                         keyboardType: TextInputType.number,
@@ -526,81 +527,121 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                           if (value == null || value.isEmpty) {
                                             return 'Kode pos harus diisi';
                                           }
+                                          if (value.length < 5) {
+                                            return 'Kode pos minimal 5 digit';
+                                          }
                                           return null;
                                         },
+                                      ),
+                                      const SizedBox(height: 16),
+                                      TextFormField(
+                                        controller: _notesController,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Catatan (Opsional)',
+                                          border: OutlineInputBorder(),
+                                          prefixIcon: Icon(Icons.note),
+                                          contentPadding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                                        ),
+                                        maxLines: 3,
                                       ),
                                     ],
                                   ],
                                 );
                               },
                             ),
-                            const SizedBox(height: 16), // Jarak antara alamat dan catatan
-                            TextFormField(
-                              controller: _notesController,
-                              decoration: const InputDecoration(
-                                labelText: 'Catatan (Opsional)',
-                                border: OutlineInputBorder(),
-                                prefixIcon: Icon(Icons.note),
-                                contentPadding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                            const SizedBox(height: 16),
+                            // Metode Pembayaran
+                            Text(
+                              'Metode Pembayaran',
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
+                            const SizedBox(height: 16),
+                            DropdownButtonFormField<Map<String, dynamic>>(
+                              value: _selectedPaymentMethodDetails,
+                              decoration: InputDecoration(
+                                labelText: 'Pilih Metode Pembayaran',
+                                border: const OutlineInputBorder(),
+                                prefixIcon: const Icon(Icons.payment),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                               ),
-                              maxLines: 2,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Metode Pembayaran
-                    Text(
-                      'Metode Pembayaran',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 16),
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          children: [
-                            RadioListTile<String>(
-                              title: Text('Transfer Bank', style: Theme.of(context).textTheme.bodyLarge),
-                              value: 'transfer_bank',
-                              groupValue: _selectedPaymentMethod,
+                              items: _availablePaymentMethods.map((method) {
+                                return DropdownMenuItem<Map<String, dynamic>>(
+                                  value: method,
+                                  child: Text(
+                                    '${method['bankName']} - ${method['accountName']}',
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                );
+                              }).toList(),
                               onChanged: (value) {
                                 setState(() {
-                                  _selectedPaymentMethod = value!;
+                                  _selectedPaymentMethodDetails = value;
+                                  _selectedPaymentMethod = value?['bankName'] ?? '';
                                 });
+                              },
+                              validator: (value) {
+                                if (value == null) {
+                                  return 'Mohon pilih metode pembayaran';
+                                }
+                                return null;
                               },
                             ),
-                            RadioListTile<String>(
-                              title: Text('E-Wallet', style: Theme.of(context).textTheme.bodyLarge),
-                              value: 'e_wallet',
-                              groupValue: _selectedPaymentMethod,
-                              onChanged: (value) {
-                                setState(() {
-                                  _selectedPaymentMethod = value!;
-                                });
-                              },
+                            if (_selectedPaymentMethodDetails != null) ...[
+                              const SizedBox(height: 16),
+                              Card(
+                                color: Theme.of(context).colorScheme.surfaceVariant,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12.0),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Detail Transfer:',
+                                        style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text('Bank: ${_selectedPaymentMethodDetails!['bankName'] ?? 'N/A'}'),
+                                      Text('Nama Rekening: ${_selectedPaymentMethodDetails!['accountName'] ?? 'N/A'}'),
+                                      Text('Nomor Rekening: ${_selectedPaymentMethodDetails!['accountNumber'] ?? 'N/A'}'),
+                                      if (_selectedPaymentMethodDetails!['qrCodeImageUrl'] != null && _selectedPaymentMethodDetails!['qrCodeImageUrl'].isNotEmpty)
+                                        Padding(
+                                          padding: const EdgeInsets.only(top: 16.0),
+                                          child: Center(
+                                            child: Image.network(
+                                              _selectedPaymentMethodDetails!['qrCodeImageUrl'],
+                                              width: 200, // Adjust size as needed
+                                              height: 200,
+                                              fit: BoxFit.contain,
+                                              errorBuilder: (context, error, stackTrace) {
+                                                return const Icon(Icons.broken_image, size: 100, color: Colors.red);
+                                              },
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 24),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: _isLoading ? null : _processOrder,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Theme.of(context).colorScheme.primary,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: _isLoading
+                                    ? const CircularProgressIndicator(color: Colors.white)
+                                    : const Text('Konfirmasi Pesanan'),
+                              ),
                             ),
                           ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Tombol Bayar
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: _processOrder,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).primaryColor,
-                          foregroundColor: Colors.white,
-                        ),
-                        child: const Text(
-                          'Bayar Sekarang',
-                          style: TextStyle(fontSize: 16),
                         ),
                       ),
                     ),
