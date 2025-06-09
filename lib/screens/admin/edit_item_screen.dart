@@ -22,9 +22,19 @@ class _EditItemScreenState extends State<EditItemScreen> {
   final _descriptionController = TextEditingController();
   final _priceController = TextEditingController();
   final _stockController = TextEditingController();
+  String _selectedCategory = 'Elektronik'; // Default category
   File? _selectedImage;
   String? _currentImageUrl;
   bool _isLoading = true; // To show loading while fetching data
+
+  final List<String> _categories = [
+    'Elektronik',
+    'Fashion',
+    'Rumah Tangga',
+    'Olahraga',
+    'Buku',
+    'Umum'
+  ];
 
   @override
   void initState() {
@@ -43,6 +53,7 @@ class _EditItemScreenState extends State<EditItemScreen> {
           _priceController.text = (data['price'] ?? 0.0).toString();
           _stockController.text = (data['stock'] ?? 0).toString();
           _currentImageUrl = data['imageUrl'];
+          _selectedCategory = data['category'] ?? 'Umum';
         }
       } else {
         if (mounted) {
@@ -148,6 +159,7 @@ class _EditItemScreenState extends State<EditItemScreen> {
           'price': double.parse(_priceController.text),
           'stock': int.parse(_stockController.text),
           'imageUrl': imageUrl, // Use new or existing image URL
+          'category': _selectedCategory,
           'updatedAt': FieldValue.serverTimestamp(),
         });
 
@@ -311,6 +323,31 @@ class _EditItemScreenState extends State<EditItemScreen> {
                               return 'Stok harus berupa angka bulat';
                             }
                             return null;
+                          },
+                        ),
+                        const SizedBox(height: 16.0),
+                        DropdownButtonFormField<String>(
+                          value: _selectedCategory,
+                          decoration: InputDecoration(
+                            labelText: 'Kategori',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                            prefixIcon: const Icon(Icons.category),
+                            contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+                          ),
+                          items: _categories.map((String category) {
+                            return DropdownMenuItem<String>(
+                              value: category,
+                              child: Text(category),
+                            );
+                          }).toList(),
+                          onChanged: (String? newValue) {
+                            if (newValue != null) {
+                              setState(() {
+                                _selectedCategory = newValue;
+                              });
+                            }
                           },
                         ),
                         const SizedBox(height: 24.0), // Jarak sebelum tombol

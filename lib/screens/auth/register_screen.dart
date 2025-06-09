@@ -79,7 +79,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Daftar'),
+        title: const Text('Edar Shop'),
         centerTitle: true,
       ),
       body: _isLoading
@@ -90,9 +90,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: <Widget>[
-                    // Logo atau Gambar Aplikasi
+                    Text(
+                      'Edar Shop',
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                    ),
+                    const SizedBox(height: 20),
                     Image.asset(
-                      'assets/app_logo.png', // Ganti dengan path logo aplikasi Anda
+                      'assets/logo-edar.png',
                       height: 120,
                     ),
                     const SizedBox(height: 30),
@@ -175,8 +182,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8),
                                   ),
-                                  backgroundColor: Theme.of(context).colorScheme.primary, // Gunakan primary color dari tema
-                                  foregroundColor: Colors.white, // Warna teks putih
+                                  backgroundColor: Theme.of(context).colorScheme.primary,
+                                  foregroundColor: Colors.white,
                                 ),
                                 child: _isLoading
                                     ? const CircularProgressIndicator(color: Colors.white)
@@ -197,7 +204,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       },
                       child: Text(
                         'Sudah punya akun? Login di sini',
-                        style: TextStyle(color: Theme.of(context).colorScheme.primary), // Gunakan primary color
+                        style: TextStyle(color: Theme.of(context).colorScheme.primary),
                       ),
                     ),
                   ],

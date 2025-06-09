@@ -85,7 +85,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Login'),
+        title: const Text('Edar Shop'),
         centerTitle: true,
       ),
       body: _isLoading
@@ -96,9 +96,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: <Widget>[
-                    // Logo atau Gambar Aplikasi
+                    Text(
+                      'Edar Shop',
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                    ),
+                    const SizedBox(height: 20),
                     Image.asset(
-                      'assets/app_logo.png', // Ganti dengan path logo aplikasi Anda
+                      'assets/logo-edar.png',
                       height: 120,
                     ),
                     const SizedBox(height: 30),
@@ -163,8 +170,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8),
                                   ),
-                                  backgroundColor: Theme.of(context).colorScheme.primary, // Gunakan primary color dari tema
-                                  foregroundColor: Colors.white, // Warna teks putih
+                                  backgroundColor: Theme.of(context).colorScheme.primary,
+                                  foregroundColor: Colors.white,
                                 ),
                                 child: _isLoading
                                     ? const CircularProgressIndicator(color: Colors.white)
@@ -185,7 +192,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       },
                       child: Text(
                         'Belum punya akun? Daftar di sini',
-                        style: TextStyle(color: Theme.of(context).colorScheme.primary), // Gunakan primary color
+                        style: TextStyle(color: Theme.of(context).colorScheme.primary),
                       ),
                     ),
                   ],

@@ -62,6 +62,15 @@ class AdminOrderManagementScreen extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            Text(
+                              'Pesanan dari: ${order.buyerName}',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                            Text(
+                              'ID Pesanan: ${order.id}',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+                            ),
+                            const Divider(height: 20, thickness: 1),
                             // Menggunakan ListView.builder untuk menampilkan setiap item dalam pesanan
                             ...order.cartItems.map((cartItem) {
                               return Padding(
